@@ -359,8 +359,8 @@ class _LoginPageState extends State<LoginPage> {
                     // Subtítulo según el modo
                     Text(
                       _modoRegistro
-                          ? 'Crea tu cuenta'
-                          : 'Esencias que dejan huella',
+                          ? 'Únete a PARFINDER'
+                          : 'Encuentra tu fragancia ideal',
                       style:
                           const TextStyle(color: Colors.white54, fontSize: 14),
                     ),
@@ -451,7 +451,7 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(12),
                         onPressed: _submit,
                         child: Text(
-                          _modoRegistro ? 'Registrarme' : 'Entra',
+                          _modoRegistro ? 'Registrarme' : 'Iniciar sesión',
                           style: const TextStyle(
                             color: kFondo,
                             fontWeight: FontWeight.bold,
