@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - release
+  pull_request:
+    branches:
+      - main
+      - release
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build_ios:
+    name: Build Flutter iOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Calculate release version
+        id: version
+        if: github.event_name != 'pull_request'
+        run: |
+          LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' || true)
+
+          if [[ "$LATEST" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR=${BASH_REMATCH[1]}
+            MINOR=${BASH_REMATCH[2]}
+            PATCH=${BASH_REMATCH[3]}
+            PATCH=$((PATCH + 1))
+          else
+            MAJOR=1
+            MINOR=0
+            PATCH=0
+          fi
+
+          VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Generated release: $VERSION"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Build Flutter iOS
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p build/ios/iphoneos/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -r parfinder.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios_ipa
+          path: build/ios/iphoneos/parfinder.ipa
+          retention-days: 7
+
+      - name: Publish GitHub Release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$VERSION" \
+            build/ios/iphoneos/parfinder.ipa \
+            --title "Release $VERSION" \
+            --generate-notes

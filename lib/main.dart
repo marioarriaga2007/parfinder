@@ -1,11 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await cargarUsuarios(); // lee usuarios.json antes de abrir la app
   runApp(const ParfinderApp());
 }
 
@@ -32,9 +38,82 @@ const String kUsuarioGuardado = 'admin';
 const String kHashGuardado =
     '4e4e142effa21d23c49a0fb55fe075bb411f676d124a65d8022935d4acdb277b';
 
-// Usuarios registrados mientras la app está abierta: usuario -> hash.
-// (Se pierden al cerrar la app; es en memoria.)
+// Usuarios en memoria: usuario -> hash de la contraseña.
+// Al abrir la app se llenan desde usuarios.json (ver cargarUsuarios).
 final Map<String, String> usuarios = {kUsuarioGuardado: kHashGuardado};
+
+// Emails de los usuarios registrados: usuario -> email
+final Map<String, String> emailsUsuarios = {};
+
+// ───────────── ARCHIVO JSON DE USUARIOS ─────────────
+// Formato del archivo usuarios.json:
+// [
+//   { "username": "...", "email": "...", "passwordHash": "..." }
+// ]
+const String kArchivoUsuarios = 'usuarios.json';
+
+Future<File> _archivoUsuarios() async {
+  final dir = await getApplicationDocumentsDirectory();
+  return File('${dir.path}/$kArchivoUsuarios');
+}
+
+/// Lee usuarios.json y llena el mapa [usuarios].
+Future<void> cargarUsuarios() async {
+  try {
+    String? contenido;
+
+    if (kIsWeb) {
+      // En el navegador no se puede escribir un archivo en disco:
+      // se guarda el mismo JSON en el almacenamiento del navegador.
+      final prefs = await SharedPreferences.getInstance();
+      contenido = prefs.getString(kArchivoUsuarios);
+    } else {
+      final archivo = await _archivoUsuarios();
+      if (await archivo.exists()) {
+        contenido = await archivo.readAsString();
+      }
+    }
+
+    if (contenido == null || contenido.trim().isEmpty) return;
+
+    final lista = jsonDecode(contenido) as List<dynamic>;
+    for (final item in lista) {
+      final u = item as Map<String, dynamic>;
+      final nombre = u['username'] as String;
+      usuarios[nombre] = u['passwordHash'] as String;
+      emailsUsuarios[nombre] = (u['email'] ?? '') as String;
+    }
+  } catch (e) {
+    debugPrint('Error al cargar usuarios: $e');
+  }
+}
+
+/// Guarda los usuarios registrados en usuarios.json.
+/// Devuelve dónde quedó guardado.
+Future<String> guardarUsuarios() async {
+  // El admin de prueba vive en el código, no se guarda en el archivo
+  final lista = usuarios.entries
+      .where((e) => e.key != kUsuarioGuardado)
+      .map((e) => {
+            'username': e.key,
+            'email': emailsUsuarios[e.key] ?? '',
+            'passwordHash': e.value,
+          })
+      .toList();
+
+  final texto = const JsonEncoder.withIndent('  ').convert(lista);
+
+  if (kIsWeb) {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kArchivoUsuarios, texto);
+    return 'el almacenamiento del navegador';
+  }
+
+  final archivo = await _archivoUsuarios();
+  await archivo.writeAsString(texto);
+  debugPrint('Usuarios guardados en: ${archivo.path}');
+  return archivo.path;
+}
 
 // ───────────── MODELO ─────────────
 class Perfume {
@@ -193,7 +272,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final usuario = _userController.text.trim();
@@ -208,10 +287,24 @@ class _LoginPageState extends State<LoginPage> {
 
       // Se guarda solo el hash de la contraseña
       usuarios[usuario] = cifrarPassword(password);
+      emailsUsuarios[usuario] = _emailController.text.trim();
+
+      // Se escribe en el archivo usuarios.json
+      String ubicacion;
+      try {
+        ubicacion = await guardarUsuarios();
+      } catch (e) {
+        usuarios.remove(usuario);
+        emailsUsuarios.remove(usuario);
+        if (!mounted) return;
+        _alerta('Error', 'No se pudo guardar el archivo: $e');
+        return;
+      }
+      if (!mounted) return;
 
       _alerta(
         'Cuenta creada',
-        'Ya puedes iniciar sesión, $usuario.',
+        'Guardado en $ubicacion.\nYa puedes iniciar sesión, $usuario.',
         alAceptar: () {
           setState(() {
             _modoRegistro = false;
