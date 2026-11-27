@@ -16,11 +16,14 @@ Future<void> main() async {
 }
 
 // ───────────── COLORES (dorado y oscuro) ─────────────
-const Color kFondo = Color(0xFF14101C); // morado muy oscuro
-const Color kFondo2 = Color(0xFF1C1528); // degradado del inicio
-const Color kDorado = Color(0xFFD4AF37); // dorado perfume
-const Color kCampo = Color(0xFF241D33); // tarjetas y campos
-const Color kTextoSuave = Colors.white54;
+const Color kFondo = Color(0xFF1E140F); // café espresso oscuro
+const Color kFondo2 = Color(0xFF2A1B14); // degradado del inicio
+const Color kDorado = Color(0xFFD9B88F); // champagne (acento)
+const Color kCampo = Color(0xFF2E211A); // tarjetas y campos, café medio
+const Color kCrema = Color(0xFFF5ECE0); // texto principal
+const Color kTextoSuave = Color(0xFFB8A593); // texto secundario
+const Color kTextoTenue = Color(0xFF8C7B6B); // placeholders
+const Color kLinea = Color(0xFF3D2D24); // divisores
 
 // ───────────── CIFRADO DEL LOGIN ─────────────
 // La contraseña NUNCA se guarda ni se compara en texto plano:
@@ -41,6 +44,9 @@ const String kHashGuardado =
 // Usuarios en memoria: usuario -> hash de la contraseña.
 // Al abrir la app se llenan desde usuarios.json (ver cargarUsuarios).
 final Map<String, String> usuarios = {kUsuarioGuardado: kHashGuardado};
+
+// Usuario que tiene la sesión abierta ('' = nadie)
+String usuarioActual = '';
 
 // Emails de los usuarios registrados: usuario -> email
 final Map<String, String> emailsUsuarios = {};
@@ -121,12 +127,15 @@ class Perfume {
   final String marca;
   final String genero;
   final String aroma;
+
+  /// Árabe, Nicho o Diseñador
+  final String tipo;
   final String notas;
 
   /// Ruta de la imagen (assets/...). Si no existe, se dibuja un frasco.
   final String imagen;
 
-  /// Categorías en las que aparece (Dulce, Fresco, Cítrico, Amaderado)
+  /// Dónde aparece: Dulce, Fresco, Cítrico, Amaderado o Sorpréndeme
   final List<String> categorias;
 
   const Perfume({
@@ -134,6 +143,7 @@ class Perfume {
     required this.marca,
     required this.genero,
     required this.aroma,
+    required this.tipo,
     required this.notas,
     required this.imagen,
     required this.categorias,
@@ -141,33 +151,116 @@ class Perfume {
 }
 
 // ───────────── AQUÍ AGREGAS TUS PERFUMES ─────────────
+// Cada categoría tiene 2 perfumes. "Sorpréndeme" tiene solo nichos.
 const List<Perfume> perfumes = [
+  // ── DULCE ──
   Perfume(
     nombre: 'Lattafa Asad',
     marca: 'Lattafa',
     genero: 'Masculino',
     aroma: 'Dulce',
+    tipo: 'Árabe',
     notas: 'Vainilla, tabaco y pimienta',
-    imagen: 'assets/lattafa_asad.png',
-    categorias: ['Dulce', 'Amaderado'],
+    imagen: 'assets/imgs/lattafa_asad.png',
+    categorias: ['Dulce'],
   ),
+  Perfume(
+    nombre: 'Xerjoff Naxos',
+    marca: 'Xerjoff',
+    genero: 'Unisex',
+    aroma: 'Dulce',
+    tipo: 'Nicho',
+    notas: 'Miel, tabaco, vainilla y canela',
+    imagen: 'assets/imgs/xerjoff_naxos.png',
+    categorias: ['Dulce'],
+  ),
+
+  // ── FRESCO ──
   Perfume(
     nombre: 'Nautica Voyage',
     marca: 'Nautica',
     genero: 'Masculino',
     aroma: 'Fresco',
+    tipo: 'Diseñador',
     notas: 'Limon y pimienta',
-    imagen: 'assets/nautica_voyage.png',
-    categorias: ['Fresco', 'Cítrico'],
+    imagen: 'assets/imgs/nautica_voyage.png',
+    categorias: ['Fresco'],
   ),
   Perfume(
-    nombre: 'Dragon Blood',
-    marca: '???',
-    genero: '???',
-    aroma: '???',
-    notas: 'Fluidos Humanos',
-    imagen: 'assets/dragon_blood.png',
-    categorias: [],
+    nombre: 'Creed Silver Mountain Water',
+    marca: 'Creed',
+    genero: 'Unisex',
+    aroma: 'Fresco',
+    tipo: 'Nicho',
+    notas: 'Bergamota, té verde, grosella negra y sándalo',
+    imagen: 'assets/imgs/silver_mountain_water.png',
+    categorias: ['Fresco'],
+  ),
+
+  // ── CÍTRICO ──
+  Perfume(
+    nombre: 'Armaf Club de Nuit Intense Man',
+    marca: 'Armaf',
+    genero: 'Masculino',
+    aroma: 'Cítrico',
+    tipo: 'Árabe',
+    notas: 'Limón, piña, abedul y almizcle',
+    imagen: 'assets/imgs/club_de_nuit_intense.png',
+    categorias: ['Cítrico'],
+  ),
+  Perfume(
+    nombre: 'Tom Ford Neroli Portofino',
+    marca: 'Tom Ford',
+    genero: 'Unisex',
+    aroma: 'Cítrico',
+    tipo: 'Nicho',
+    notas: 'Bergamota, limón, neroli y ámbar',
+    imagen: 'assets/imgs/neroli_portofino.png',
+    categorias: ['Cítrico'],
+  ),
+
+  // ── AMADERADO ──
+  Perfume(
+    nombre: 'Lattafa Oud Mood',
+    marca: 'Lattafa',
+    genero: 'Unisex',
+    aroma: 'Amaderado',
+    tipo: 'Árabe',
+    notas: 'Oud, ámbar, azafrán y pachulí',
+    imagen: 'assets/imgs/oud_mood.png',
+    categorias: ['Amaderado'],
+  ),
+  Perfume(
+    nombre: 'Tom Ford Oud Wood',
+    marca: 'Tom Ford',
+    genero: 'Unisex',
+    aroma: 'Amaderado',
+    tipo: 'Nicho',
+    notas: 'Oud, palo de rosa, sándalo y cardamomo',
+    imagen: 'assets/imgs/oud_wood.png',
+    categorias: ['Amaderado'],
+  ),
+
+  // ── SORPRÉNDEME (solo nichos) ──
+  Perfume(
+    nombre: 'Baccarat Rouge 540',
+    marca: 'Maison Francis Kurkdjian',
+    genero: 'Unisex',
+    aroma: 'Ámbar floral',
+    tipo: 'Nicho',
+    notas: 'Jazmín, azafrán, ámbar y cedro',
+    imagen: 'assets/imgs/baccarat_rouge_540.png',
+    categorias: ['Sorpréndeme'],
+  ),
+  Perfume(
+    nombre: 'Creed Aventus',
+    marca: 'Creed',
+    genero: 'Masculino',
+    aroma: 'Frutal ahumado',
+    tipo: 'Nicho',
+    notas: 'Piña, bergamota, abedul y almizcle',
+    imagen: 'assets/imgs/creed_aventus.png',
+    categorias: ['Sorpréndeme'],
   ),
 ];
 
@@ -195,6 +288,15 @@ void abrirDetalle(BuildContext context, Perfume p) {
   Navigator.push(
     context,
     CupertinoPageRoute(builder: (_) => DetallePage(perfume: p)),
+  );
+}
+
+void abrirLista(BuildContext context, String titulo, List<Perfume> lista) {
+  Navigator.push(
+    context,
+    CupertinoPageRoute(
+      builder: (_) => ListaPage(titulo: titulo, lista: lista),
+    ),
   );
 }
 
@@ -329,6 +431,7 @@ class _LoginPageState extends State<LoginPage> {
         '¡Bienvenido!',
         'Hola, $usuario. Disfruta tu fragancia.',
         alAceptar: () {
+          usuarioActual = usuario;
           // Entra a la app y ya no se puede regresar al login con "atrás"
           Navigator.pushReplacement(
             context,
@@ -375,8 +478,8 @@ class _LoginPageState extends State<LoginPage> {
               keyboardType: teclado,
               obscureText: esPassword ? _ocultarPassword : false,
               prefix: Icon(icono, color: kDorado),
-              style: const TextStyle(color: Colors.white),
-              placeholderStyle: const TextStyle(color: Colors.white38),
+              style: const TextStyle(color: kCrema),
+              placeholderStyle: const TextStyle(color: kTextoTenue),
               padding:
                   const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               decoration: BoxDecoration(
@@ -405,7 +508,7 @@ class _LoginPageState extends State<LoginPage> {
               },
               icon: Icon(
                 _ocultarPassword ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
-                color: Colors.white54,
+                color: kTextoSuave,
                 size: 20,
               ),
             ),
@@ -441,7 +544,7 @@ class _LoginPageState extends State<LoginPage> {
                     const Text(
                       'PARFINDER',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: kCrema,
                         fontSize: 30,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
@@ -455,7 +558,7 @@ class _LoginPageState extends State<LoginPage> {
                           ? 'Únete a PARFINDER'
                           : 'Encuentra tu fragancia ideal',
                       style:
-                          const TextStyle(color: Colors.white54, fontSize: 14),
+                          const TextStyle(color: kTextoSuave, fontSize: 14),
                     ),
                     const SizedBox(height: 32),
 
@@ -608,7 +711,12 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
         const SnackBar(content: Text('No encontramos ese perfume')),
       );
     } else {
-      abrirDetalle(context, encontrados.first);
+      final resultados = encontrados.toList();
+      if (resultados.length == 1) {
+        abrirDetalle(context, resultados.first);
+      } else {
+        abrirLista(context, 'Resultados', resultados);
+      }
     }
   }
 
@@ -620,13 +728,50 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
         SnackBar(content: Text('Aún no hay perfumes $categoria')),
       );
     } else {
-      abrirDetalle(context, lista.first);
+      abrirLista(context, categoria, lista.toList());
     }
+  }
+
+  // Cerrar sesión: confirma y regresa al login (con ese botón se puede
+  // entrar con otro usuario o registrar uno nuevo)
+  void _cerrarSesion() {
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text('¿Quieres salir de la cuenta de $usuarioActual?'),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              usuarioActual = '';
+              // Borra todas las pantallas anteriores y abre el login
+              Navigator.pushAndRemoveUntil(
+                context,
+                CupertinoPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
+            },
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Perfume al azar
   void _sorprendeme() {
-    abrirDetalle(context, perfumes[_random.nextInt(perfumes.length)]);
+    final nichos =
+        perfumes.where((p) => p.categorias.contains('Sorpréndeme')).toList();
+    abrirDetalle(context, nichos[_random.nextInt(nichos.length)]);
   }
 
   @override
@@ -648,6 +793,33 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
                   children: [
+                    // Barra superior: saludo + botón Cerrar sesión
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Hola, $usuarioActual',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: kTextoSuave,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _cerrarSesion,
+                          icon: const Icon(Icons.logout,
+                              color: kDorado, size: 18),
+                          label: const Text(
+                            'Cerrar sesión',
+                            style: TextStyle(color: kDorado, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
                     // Logo: frasco dibujado
                     const SizedBox(
                       width: 80,
@@ -659,7 +831,7 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
                     const Text(
                       'PARFINDER',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: kCrema,
                         fontSize: 34,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.2,
@@ -670,12 +842,12 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
                     // Buscador
                     TextField(
                       controller: _busqueda,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: kCrema),
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _buscar(),
                       decoration: InputDecoration(
                         hintText: 'Buscar perfume',
-                        hintStyle: const TextStyle(color: Colors.white38),
+                        hintStyle: const TextStyle(color: kTextoTenue),
                         filled: true,
                         fillColor: kCampo,
                         prefixIcon: const Icon(Icons.search, color: kDorado),
@@ -710,7 +882,7 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
                           child: _BotonCategoria(
                             texto: 'Dulce',
                             icono: Icons.cake,
-                            color: const Color(0xFFFF6B6B),
+                            color: const Color(0xFFE08A8A),
                             onTap: () => _porCategoria('Dulce'),
                           ),
                         ),
@@ -719,7 +891,7 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
                           child: _BotonCategoria(
                             texto: 'Fresco',
                             icono: Icons.eco,
-                            color: const Color(0xFF2EC4A0),
+                            color: const Color(0xFF8FB9A0),
                             onTap: () => _porCategoria('Fresco'),
                           ),
                         ),
@@ -732,7 +904,7 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
                           child: _BotonCategoria(
                             texto: 'Cítrico',
                             icono: Icons.wb_sunny,
-                            color: const Color(0xFFFFB020),
+                            color: const Color(0xFFE2B563),
                             onTap: () => _porCategoria('Cítrico'),
                           ),
                         ),
@@ -741,7 +913,7 @@ class _PreferenciasPageState extends State<PreferenciasPage> {
                           child: _BotonCategoria(
                             texto: 'Amaderado',
                             icono: Icons.park,
-                            color: const Color(0xFFB07040),
+                            color: const Color(0xFFC08A5A),
                             onTap: () => _porCategoria('Amaderado'),
                           ),
                         ),
@@ -821,11 +993,188 @@ class _BotonCategoria extends StatelessWidget {
               Text(
                 texto,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: kCrema,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ───────────── PANTALLA: LISTA DE PERFUMES DE UNA CATEGORÍA ─────────────
+class ListaPage extends StatelessWidget {
+  final String titulo;
+  final List<Perfume> lista;
+
+  const ListaPage({super.key, required this.titulo, required this.lista});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: kFondo,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Barra superior: Volver | PARFINDER
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.chevron_left, color: kDorado, size: 20),
+                            Text('Volver',
+                                style:
+                                    TextStyle(color: kDorado, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      const Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'PAR',
+                              style: TextStyle(color: kCrema),
+                            ),
+                            TextSpan(
+                              text: 'FINDER',
+                              style: TextStyle(color: kDorado),
+                            ),
+                          ],
+                        ),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 56),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  Text(
+                    titulo,
+                    style: const TextStyle(
+                      color: kCrema,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    '${lista.length} perfumes',
+                    style: const TextStyle(color: kTextoSuave, fontSize: 14),
+                  ),
+                  const SizedBox(height: 14),
+
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: lista.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, i) {
+                        final p = lista[i];
+                        return Material(
+                          color: kCampo,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => abrirDetalle(context, p),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: kDorado.withOpacity(0.25),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Miniatura (foto o frasco dibujado)
+                                  Container(
+                                    width: 64,
+                                    height: 80,
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: kFondo,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Image.asset(
+                                      p.imagen,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stack) {
+                                        return const CustomPaint(
+                                          painter:
+                                              PerfumePainter(color: kDorado),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          p.nombre,
+                                          style: const TextStyle(
+                                            color: kCrema,
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          p.marca,
+                                          style: const TextStyle(
+                                            color: kTextoSuave,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                            border: Border.all(color: kDorado),
+                                          ),
+                                          child: Text(
+                                            p.tipo,
+                                            style: const TextStyle(
+                                              color: kDorado,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(Icons.chevron_right,
+                                      color: kDorado),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -872,7 +1221,7 @@ class DetallePage extends StatelessWidget {
                           children: [
                             TextSpan(
                               text: 'PAR',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: kCrema),
                             ),
                             TextSpan(
                               text: 'FINDER',
@@ -934,7 +1283,7 @@ class DetallePage extends StatelessWidget {
                   Text(
                     perfume.nombre,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: kCrema,
                       fontSize: 30,
                       fontWeight: FontWeight.w800,
                     ),
@@ -953,6 +1302,10 @@ class DetallePage extends StatelessWidget {
                       icono: Icons.waves,
                       etiqueta: 'Aroma:',
                       valor: perfume.aroma),
+                  _Fila(
+                      icono: Icons.workspace_premium,
+                      etiqueta: 'Tipo:',
+                      valor: perfume.tipo),
 
                   const SizedBox(height: 14),
 
@@ -984,7 +1337,7 @@ class DetallePage extends StatelessWidget {
                               Text(
                                 perfume.notas,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: kCrema,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1038,7 +1391,7 @@ class _Fila extends StatelessWidget {
                   Text(
                     valor,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: kCrema,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1047,7 +1400,7 @@ class _Fila extends StatelessWidget {
             ],
           ),
         ),
-        const Divider(height: 1, color: Colors.white12),
+        const Divider(height: 1, color: kLinea),
       ],
     );
   }
