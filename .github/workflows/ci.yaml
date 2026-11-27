@@ -82,6 +82,6 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           gh release create "$VERSION" \
-            build/ios/iphoneos/parfinder1.ipa \
+            build/ios/iphoneos/parfinder.ipa \
             --title "Release $VERSION" \
             --generate-notes
